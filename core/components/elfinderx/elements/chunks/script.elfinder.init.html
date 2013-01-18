@@ -1,8 +1,8 @@
 <script type="text/javascript" charset="utf-8">
 	$().ready(function() {
 		var elf = $('#elfinder').elfinder({
-			url : 'php/connector.php'  // connector URL (REQUIRED)
-			// lang: 'ru',             // language (OPTIONAL)
+			url : '[[+connector_url]]',  // connector URL (REQUIRED)
+			lang: '[[+lang]]',             // language (OPTIONAL)
 		}).elfinder('instance');
 	});
 </script>

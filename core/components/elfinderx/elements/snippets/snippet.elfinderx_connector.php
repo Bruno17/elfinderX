@@ -20,19 +20,11 @@ $base_path = $modx->getOption('base_path', null, MODX_BASE_PATH);
 $base_url = $modx->getOption('base_url', null, MODX_BASE_URL);
 
 
+
 $elfinder = $modx->getService('elfinderx', 'ElfinderX', $modx->getOption('elfinderx.core_path', null, $modx->getOption('core_path') . 'components/elfinderx/') . 'model/elfinderx/', $scriptProperties);
 if (!($elfinder instanceof ElfinderX))
     return '';
 
-$opts = array('debug' => true, 'roots' => array(array(
-            'driver' => 'LocalFileSystem', // driver for accessing file system (REQUIRED)
-            'path' => $modx->getOption('assets_path') . 'uploads/', // path to files (REQUIRED)
-            'URL' => $modx->getOption('assets_url') . 'uploads/', // URL to files (REQUIRED)
-            'accessControl' => 'accessdemo' // disable and hide dot starting files (OPTIONAL)
-                )));
 
-print_r($opts);
-
-return $elfinder->runConnector($opts);
-
+return $elfinder->runConnector();
 

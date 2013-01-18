@@ -54,6 +54,7 @@ class elFinderConnector {
 		$cmd    = isset($src['cmd']) ? $src['cmd'] : '';
 		$args   = array();
 		
+        
 		if (!function_exists('json_encode')) {
 			$error = $this->elFinder->error(elFinder::ERROR_CONF, elFinder::ERROR_CONF_NO_JSON);
 			$this->output(array('error' => '{"error":["'.implode('","', $error).'"]}', 'raw' => true));
@@ -113,6 +114,7 @@ class elFinderConnector {
 			}
 		}
 		
+       
 		if (isset($data['pointer'])) {
 			rewind($data['pointer']);
 			fpassthru($data['pointer']);

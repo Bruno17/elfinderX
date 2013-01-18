@@ -44,6 +44,8 @@ if (!class_exists('ElfinderX')) {
             $assetsPath = $this->modx->getOption('migx.assets_path', null, $modx->getOption('assets_path') . 'components/elfinderx/');
             $assetsUrl = $this->modx->getOption('migx.assets_url', null, $modx->getOption('assets_url') . 'components/elfinderx/');
 
+            $defaultconfig['scriptProperties'] = $config;
+            
             $defaultconfig['debugUser'] = '';
             $defaultconfig['corePath'] = $corePath;
             $defaultconfig['modelPath'] = $corePath . 'model/';
@@ -62,6 +64,8 @@ if (!class_exists('ElfinderX')) {
             $defaultconfig['connectorUrl'] = $assetsUrl . 'connector.php';
             $defaultconfig['request'] = $_REQUEST;
             $defaultconfig['mode'] = 'output';
+            $defaultconfig['roots'] = '[{"base_url":"'.$this->modx->getOption('assets_url').'","base_path":"'.$this->modx->getOption('assets_path').'","rootpath":"","hideurl":"","driver":"LocalFileSystem","accessControl":"accessdemo"}]';
+            $defaultconfig['roots']['default'] = $defaultconfig['roots'];
 
             $this->config = array_merge($defaultconfig, $config);
 
@@ -84,6 +88,7 @@ if (!class_exists('ElfinderX')) {
             $this->modx->regClientScript('assets/components/elfinderx/js/i18n/elfinder.de.js');
 
             $parser = new revoChunkie($scriptTpl);
+            $parser->createVars($this->config);
             $script = $parser->Render();
 
             $this->modx->regClientScript($script);
@@ -96,19 +101,38 @@ if (!class_exists('ElfinderX')) {
             return '<div id="elfinder"></div>';
         }
 
-        function runConnector($opts) {
+        function runConnector() {
+  
+            $roots = $this->modx->fromJson($this->config['roots']);
+            $tmproots = array();
+            foreach ($roots as $root){
+                foreach ($this->config['roots']['default'] as $key => $value){
+                    $root[$key] = array_key_exists($key,$root) ? $root[$key] : $value;
+                }
+                $root['path'] = $root['base_path'] . $root['rootpath']; // path to files (REQUIRED)
+                if (empty($root['hideurl'])){
+                    $root['URL'] = $root['base_url'] . $root['rootpath']; // URL to files (REQUIRED)    
+                }
+                unset ($root['hideurl'],$root['base_path'],$root['base_url'],$root['rootpath']);
+                $tmproots[] = $root;
+            }
+            $roots = $tmproots;
+            unset($tmproots);
+
             error_reporting(0); // Set E_ALL for debuging
-            
-            include_once  $this->config['elPath']  . 'elFinderConnector.class.php';
-            include_once  $this->config['elPath']  . 'elFinder.class.php';
-            include_once  $this->config['elPath']  . 'elFinderVolumeDriver.class.php';
-            include_once  $this->config['elPath']  . 'elFinderVolumeLocalFileSystem.class.php';
+
+            include_once $this->config['elPath'] . 'elFinderConnector.class.php';
+            include_once $this->config['elPath'] . 'elFinder.class.php';
+            include_once $this->config['elPath'] . 'elFinderVolumeDriver.class.php';
+            include_once $this->config['elPath'] . 'elFinderVolumeLocalFileSystem.class.php';
             // Required for MySQL storage connector
             // include_once dirname(__FILE__).DIRECTORY_SEPARATOR.'elFinderVolumeMySQL.class.php';
             // Required for FTP connector support
             // include_once dirname(__FILE__).DIRECTORY_SEPARATOR.'elFinderVolumeFTP.class.php';
 
-
+            $opts = $this->config[$scriptProperties];
+            $opts['roots'] = $roots;
+ 
             // run elFinder
             $connector = new elFinderConnector(new elFinder($opts));
             $connector->run();
