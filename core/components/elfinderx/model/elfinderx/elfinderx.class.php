@@ -64,8 +64,7 @@ if (!class_exists('ElfinderX')) {
             $defaultconfig['connectorUrl'] = $assetsUrl . 'connector.php';
             $defaultconfig['request'] = $_REQUEST;
             $defaultconfig['mode'] = 'output';
-            $defaultconfig['roots'] = '[{"base_url":"'.$this->modx->getOption('assets_url').'","base_path":"'.$this->modx->getOption('assets_path').'","rootpath":"","hideurl":"","driver":"LocalFileSystem","accessControl":"accessdemo"}]';
-            $defaultconfig['roots']['default'] = $defaultconfig['roots'];
+            $defaultconfig['defaultroot'] = '{"base_url":"'.$this->modx->getOption('assets_url').'","base_path":"'.$this->modx->getOption('assets_path').'","rootpath":"","hideurl":"","driver":"LocalFileSystem","accessControl":"accessdemo"}';
 
             $this->config = array_merge($defaultconfig, $config);
 
@@ -84,7 +83,8 @@ if (!class_exists('ElfinderX')) {
             $this->modx->regClientCSS('assets/components/elfinderx/css/elfinder.min.css');
             $this->modx->regClientCSS('assets/components/elfinderx/css/theme.css');
 
-            $this->modx->regClientScript('assets/components/elfinderx/js/elfinder.js');
+            //$this->modx->regClientScript('assets/components/elfinderx/js/elfinder.js');
+            $this->modx->regClientScript('assets/components/elfinderx/js/elfinder.min.js');
             $this->modx->regClientScript('assets/components/elfinderx/js/i18n/elfinder.de.js');
 
             $parser = new revoChunkie($scriptTpl);
@@ -103,10 +103,12 @@ if (!class_exists('ElfinderX')) {
 
         function runConnector() {
   
+            $roots = $this->modx->getOption('roots',$this->config,array(array()));
             $roots = $this->modx->fromJson($this->config['roots']);
+            $defaultroot = $this->modx->fromJson($this->config['defaultroot']);
             $tmproots = array();
             foreach ($roots as $root){
-                foreach ($this->config['roots']['default'] as $key => $value){
+                foreach ($defaultroot as $key => $value){
                     $root[$key] = array_key_exists($key,$root) ? $root[$key] : $value;
                 }
                 $root['path'] = $root['base_path'] . $root['rootpath']; // path to files (REQUIRED)
