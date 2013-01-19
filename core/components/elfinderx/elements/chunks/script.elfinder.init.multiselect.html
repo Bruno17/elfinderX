@@ -1,0 +1,44 @@
+<script type="text/javascript" charset="utf-8">
+	
+    
+    $().ready(function() {
+        var selected_files = [];
+        var dialog = null;
+        $("#btn-selectfiles").click(function() {
+           dialog.dialogelfinder('close');
+           if (selected_files.length > 0){
+            $.getJSON("[[+connector_url]]", { targets: selected_files, action: 'multiselect' }, function(json) {
+                console.log(json);
+                selected_files = [];
+            });               
+           }
+         
+        }); 
+        
+        $("#btn-openelfinder").click(function() {
+            open_elfinder_dialog();  
+        });                  
+
+function open_elfinder_dialog()
+{
+	if (dialog == null)
+	{
+		dialog = $('#elfinder').dialogelfinder({
+			url: '[[+connector_url]]',
+			commandsOptions: {getfile: {oncomplete : 'close'}}
+			//,getFileCallback: 'hideselectbutton'
+            ,handlers : {
+                select : function(event, elfinderInstance) {
+                    selected_files = event.data.selected;
+                }
+            } 
+		});
+	} else {dialog.dialogelfinder('open');}
+};    
+         
+	});
+    
+
+    
+</script>
+

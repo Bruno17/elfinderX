@@ -45,7 +45,7 @@ if (!class_exists('ElfinderX')) {
             $assetsUrl = $this->modx->getOption('migx.assets_url', null, $modx->getOption('assets_url') . 'components/elfinderx/');
 
             $defaultconfig['scriptProperties'] = $config;
-            
+
             $defaultconfig['debugUser'] = '';
             $defaultconfig['corePath'] = $corePath;
             $defaultconfig['modelPath'] = $corePath . 'model/';
@@ -64,7 +64,8 @@ if (!class_exists('ElfinderX')) {
             $defaultconfig['connectorUrl'] = $assetsUrl . 'connector.php';
             $defaultconfig['request'] = $_REQUEST;
             $defaultconfig['mode'] = 'output';
-            $defaultconfig['defaultroot'] = '{"base_url":"'.$this->modx->getOption('assets_url').'","base_path":"'.$this->modx->getOption('assets_path').'","rootpath":"","hideurl":"","driver":"LocalFileSystem","accessControl":"accessdemo"}';
+            $defaultconfig['defaultroot'] = '{"base_url":"' . $this->modx->getOption('assets_url') . '","base_path":"' . $this->modx->getOption('assets_path') .
+                '","rootpath":"","hideurl":"","driver":"LocalFileSystem","accessControl":"accessdemo"}';
 
             $this->config = array_merge($defaultconfig, $config);
 
@@ -78,10 +79,32 @@ if (!class_exists('ElfinderX')) {
         function regScripts() {
 
             $config = array();
-            $scriptTpl = $this->modx->getOption('scriptTpl', $config, '@FILE ' . $this->config['chunksPath'] . 'script.elfinder.init.html');
+            $script = $this->modx->getOption('scriptTpl', $this->config, '');
+            $defaultScript = '@FILE ' . $this->config['chunksPath'] . 'script.elfinder.init.html';
+
+            if (!empty($script)) {
+                $scriptTpl = file_exists($scriptTpl) ? '@FILE ' . $script : '';
+                $scriptTpl = empty($scriptTpl) && file_exists($this->config['chunksPath'] . $script) ? '@FILE ' . $this->config['chunksPath'] . $script : $scriptTpl;
+                $scriptTpl = empty($scriptTpl) && file_exists($this->config['chunksPath'] . 'script.elfinder.init.' . $script . '.html') ? '@FILE ' . $this->config['chunksPath'] . 'script.elfinder.init.' . $script .
+                    '.html' : $scriptTpl;
+                $scriptTpl = empty($scriptTpl) ? $script : $scriptTpl;
+            } else {
+                $scriptTpl = $defaultScript;
+            }
+
+
+            /*
+            <link rel="stylesheet" type="text/css" media="screen" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/themes/smoothness/jquery-ui.css">
+            <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
+            <script type="text/javascript" src="http://code.jquery.com/ui/1.9.1/jquery-ui.js"></script>
+            */
 
             $this->modx->regClientCSS('assets/components/elfinderx/css/elfinder.min.css');
             $this->modx->regClientCSS('assets/components/elfinderx/css/theme.css');
+            $this->modx->regClientCSS('http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/themes/smoothness/jquery-ui.css');
+
+            $this->modx->regClientStartupScript('http://ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js');
+            $this->modx->regClientStartupScript('http://code.jquery.com/ui/1.9.1/jquery-ui.js');
 
             //$this->modx->regClientScript('assets/components/elfinderx/js/elfinder.js');
             $this->modx->regClientScript('assets/components/elfinderx/js/elfinder.min.js');
@@ -101,21 +124,34 @@ if (!class_exists('ElfinderX')) {
             return '<div id="elfinder"></div>';
         }
 
-        function runConnector() {
-  
-            $roots = $this->modx->getOption('roots',$this->config,array(array()));
+        function initElfinder() {
+            if (isset($this->modx->elfinder)) return;
+            
+            $roots = $this->modx->getOption('roots', $this->config, array(array()));
             $roots = $this->modx->fromJson($this->config['roots']);
             $defaultroot = $this->modx->fromJson($this->config['defaultroot']);
             $tmproots = array();
-            foreach ($roots as $root){
-                foreach ($defaultroot as $key => $value){
-                    $root[$key] = array_key_exists($key,$root) ? $root[$key] : $value;
+            $pathcollection = array();
+            $tmbPath = '.tmb/';
+
+            foreach ($roots as $root) {
+                foreach ($defaultroot as $key => $value) {
+                    $root[$key] = array_key_exists($key, $root) ? $root[$key] : $value;
                 }
                 $root['path'] = $root['base_path'] . $root['rootpath']; // path to files (REQUIRED)
-                if (empty($root['hideurl'])){
-                    $root['URL'] = $root['base_url'] . $root['rootpath']; // URL to files (REQUIRED)    
+                //collect pathes
+                $pathcollection[] = $root['path'];
+
+                if (empty($root['hideurl'])) {
+                    $root['URL'] = $root['base_url'] . $root['rootpath']; // URL to files (REQUIRED)
                 }
-                unset ($root['hideurl'],$root['base_path'],$root['base_url'],$root['rootpath']);
+                if (isset($root['thumbPath'])) {
+                    $root['tmbURL'] = $this->modx->getOption('base_url') . $root['thumbPath']; // URL to files (REQUIRED)
+                    $root['tmbPath'] = $this->modx->getOption('base_path') . $root['thumbPath']; // URL to files (REQUIRED)
+                }
+
+
+                unset($root['hideurl'], $root['base_path'], $root['base_url'], $root['rootpath'], $root['thumbPath']);
                 $tmproots[] = $root;
             }
             $roots = $tmproots;
@@ -134,10 +170,29 @@ if (!class_exists('ElfinderX')) {
 
             $opts = $this->config[$scriptProperties];
             $opts['roots'] = $roots;
- 
+
             // run elFinder
-            $connector = new elFinderConnector(new elFinder($opts));
+            $this->modx->elfinder = new elFinder($opts);
+        }
+
+        function runConnector() {
+            
+            $this->initElfinder();
+            $connector = new elFinderConnector($this->modx->elfinder);
             $connector->run();
+
+        }
+
+        /**
+         * Return file real path
+         *
+         * @param  string  $hash  file hash
+         * @return string
+         * @author Dmitry (dio) Levashov
+         **/
+        public function realpath($hash) {
+            $this->initElfinder();
+            return $this->modx->elfinder->realpath($hash);
         }
 
         function run() {
