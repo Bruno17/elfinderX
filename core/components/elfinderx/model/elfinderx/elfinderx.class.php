@@ -64,6 +64,7 @@ if (!class_exists('ElfinderX')) {
             $defaultconfig['connectorUrl'] = $assetsUrl . 'connector.php';
             $defaultconfig['request'] = $_REQUEST;
             $defaultconfig['mode'] = 'output';
+            $defaultconfig['addJquery'] = '1';
             $defaultconfig['defaultroot'] = '{"base_url":"' . $this->modx->getOption('assets_url') . '","base_path":"' . $this->modx->getOption('assets_path') .
                 '","rootpath":"","hideurl":"","driver":"LocalFileSystem","accessControl":"accessdemo"}';
 
@@ -76,37 +77,45 @@ if (!class_exists('ElfinderX')) {
 
         }
 
+        function findTpl($files, $tpl, $default) {
+            if (!empty($tpl)) {
+                // search for files
+                if (file_exists($this->modx->getOption('base_path') . $tpl)) {
+                    return '@FILE ' . $this->modx->getOption('base_path') . $tpl;
+                }
+                if (is_array($files)) {
+                    foreach ($files as $file) {
+                        if (file_exists($file)) {
+                            return '@FILE ' . $file;
+                        }
+                    }
+                }
+                return $tpl; // use chunk
+            }
+            return $default;
+
+        }
+
         function regScripts() {
 
-            $config = array();
             $script = $this->modx->getOption('scriptTpl', $this->config, '');
-            $defaultScript = '@FILE ' . $this->config['chunksPath'] . 'script.elfinder.init.html';
+            $defaultScript = '@FILE ' . $this->config['chunksPath'] . 'script.elfinder.html';
 
-            if (!empty($script)) {
-                $scriptTpl = file_exists($scriptTpl) ? '@FILE ' . $script : '';
-                $scriptTpl = empty($scriptTpl) && file_exists($this->config['chunksPath'] . $script) ? '@FILE ' . $this->config['chunksPath'] . $script : $scriptTpl;
-                $scriptTpl = empty($scriptTpl) && file_exists($this->config['chunksPath'] . 'script.elfinder.init.' . $script . '.html') ? '@FILE ' . $this->config['chunksPath'] . 'script.elfinder.init.' . $script .
-                    '.html' : $scriptTpl;
-                $scriptTpl = empty($scriptTpl) ? $script : $scriptTpl;
-            } else {
-                $scriptTpl = $defaultScript;
-            }
+            $testFiles = array();
+            $testFiles[] = $this->config['chunksPath'] . $script;
+            $testFiles[] = $this->config['chunksPath'] . 'script.elfinder.' . $script . '.html';
 
-
-            /*
-            <link rel="stylesheet" type="text/css" media="screen" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/themes/smoothness/jquery-ui.css">
-            <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
-            <script type="text/javascript" src="http://code.jquery.com/ui/1.9.1/jquery-ui.js"></script>
-            */
+            $scriptTpl = $this->findTpl($testFiles, $script, $defaultScript);
 
             $this->modx->regClientCSS('assets/components/elfinderx/css/elfinder.min.css');
             $this->modx->regClientCSS('assets/components/elfinderx/css/theme.css');
-            $this->modx->regClientCSS('http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/themes/smoothness/jquery-ui.css');
+  
+            if (!empty( $this->config['addJquery'])) {
+                $this->modx->regClientCSS('http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.18/themes/smoothness/jquery-ui.css');
+                $this->modx->regClientStartupScript('http://ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js');
+                $this->modx->regClientStartupScript('http://code.jquery.com/ui/1.9.1/jquery-ui.js');                
+            }
 
-            $this->modx->regClientStartupScript('http://ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js');
-            $this->modx->regClientStartupScript('http://code.jquery.com/ui/1.9.1/jquery-ui.js');
-
-            //$this->modx->regClientScript('assets/components/elfinderx/js/elfinder.js');
             $this->modx->regClientScript('assets/components/elfinderx/js/elfinder.min.js');
             $this->modx->regClientScript('assets/components/elfinderx/js/i18n/elfinder.de.js');
 
@@ -121,12 +130,26 @@ if (!class_exists('ElfinderX')) {
 
         function createOutput() {
             $this->regScripts();
-            return '<div id="elfinder"></div>';
+            
+            $tpl = $this->modx->getOption('tpl', $this->config, '');
+            $defaultTpl = '@FILE ' . $this->config['chunksPath'] . 'elfinder.html';
+
+            $testFiles = array();
+            $testFiles[] = $this->config['chunksPath'] . $tpl;
+            $testFiles[] = $this->config['chunksPath'] . 'elfinder.' . $tpl . '.html';
+
+            $tpl = $this->findTpl($testFiles, $tpl, $defaultTpl);            
+
+            $parser = new revoChunkie($tpl);
+            $parser->createVars($this->config);
+            return $parser->Render();            
+
         }
 
         function initElfinder() {
-            if (isset($this->modx->elfinder)) return;
-            
+            if (isset($this->modx->elfinder))
+                return;
+
             $roots = $this->modx->getOption('roots', $this->config, array(array()));
             $roots = $this->modx->fromJson($this->config['roots']);
             $defaultroot = $this->modx->fromJson($this->config['defaultroot']);
@@ -176,7 +199,7 @@ if (!class_exists('ElfinderX')) {
         }
 
         function runConnector() {
-            
+
             $this->initElfinder();
             $connector = new elFinderConnector($this->modx->elfinder);
             $connector->run();
