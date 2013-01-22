@@ -1,21 +1,8 @@
 <script type="text/javascript" charset="utf-8">
-	
     
     $().ready(function() {
-        var selected_files = [];
         var dialog = null;
-        $("#btn-selectfiles").click(function() {
-           dialog.dialogelfinder('close');
-           if (selected_files.length > 0){
-            $.getJSON("[[+connector_url]]", { targets: selected_files, action: 'multiselect' }, function(json) {
-                console.log(json);
-                selected_files = [];
-            });               
-           }
-         
-        }); 
-        
-        $("#btn-openelfinder").click(function() {
+        $("#btn-openelfinder").click(function(e) {
             open_elfinder_dialog();  
         });                  
 
@@ -25,8 +12,15 @@ function open_elfinder_dialog()
 	{
 		dialog = $('#elfinder').dialogelfinder({
 			url: '[[+connector_url]]',
-			commandsOptions: {getfile: {oncomplete : 'close'}}
-			//,getFileCallback: 'hideselectbutton'
+			commandsOptions: {
+			    getfile: {
+			        oncomplete : 'close'
+                    ,multiple : true               
+                 }
+             }
+			,getFileCallback: function(files) { 
+                    select_elfinder_files(files)
+               }
             ,handlers : {
                 select : function(event, elfinderInstance) {
                     selected_files = event.data.selected;
@@ -34,7 +28,17 @@ function open_elfinder_dialog()
             } 
 		});
 	} else {dialog.dialogelfinder('open');}
-};    
+}    
+
+function select_elfinder_files(files){
+			var l = files.length, path;
+
+			while (l--) {
+				path = files[l].path;
+                //console.log(path);
+ 			}        
+}
+
          
 	});
     
